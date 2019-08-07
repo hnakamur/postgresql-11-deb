@@ -1,0 +1,242 @@
+postgresql-11 (11.5-1.pgdg18.04+1) bionic-pgdg; urgency=medium
+
+  * Rebuild for bionic-pgdg.
+  * Changes applied by generate-pgdg-source:
+    + Use clang/llvm 6.0 for jit support on amd64/i386; disable on ppc64el.
+
+ -- PostgreSQL on Debian and Ubuntu <pgsql-pkg-debian@lists.postgresql.org>  Wed, 07 Aug 2019 11:36:28 +0200
+
+postgresql-11 (11.5-1) unstable; urgency=medium
+
+  * New upstream version.
+
+    + Fixes regression in ALTER TABLE on multiple columns. (Closes: #932247)
+
+    + No longer picks "UCT" as timezone spelling. (Closes: #929953)
+
+    + Require schema qualification to cast to a temporary type when using
+      functional cast syntax (Noah Misch)
+
+      We have long required invocations of temporary functions to explicitly
+      specify the temporary schema, that is pg_temp.func_name(args). Require
+      this as well for casting to temporary types using functional notation,
+      for example pg_temp.type_name(arg). Otherwise it's possible to capture a
+      function call using a temporary object, allowing privilege escalation in
+      much the same ways that we blocked in CVE-2007-2138. (CVE-2019-10208)
+
+    + Fix execution of hashed subplans that require cross-type comparison
+      (Tom Lane, Andreas Seltenreich)
+
+      Hashed subplans used the outer query's original comparison operator to
+      compare entries of the hash table.  This is the wrong thing if that
+      operator is cross-type, since all the hash table entries will be of the
+      subquery's output type.  For the set of hashable cross-type operators in
+      core PostgreSQL, this mistake seems nearly harmless on 64-bit machines,
+      but it can result in crashes or perhaps unauthorized disclosure of
+      server memory on 32-bit machines.  Extensions might provide hashable
+      cross-type operators that create larger risks. (CVE-2019-10209)
+
+  * debian/pycompat: Obsolete, remove.
+  * debian/patches: Add missing patch documentation.
+  * debian/rules: Use /usr/share/dpkg/pkg-info.mk and vendor.mk for
+    --with-extra-version.
+  * debian/*.symbols: Add Build-Depends-Package information.
+  * debian/tests: Also run regression tests.
+  * debian/tests/control: Add fakeroot to dependencies.
+
+ -- Christoph Berg <myon@debian.org>  Wed, 07 Aug 2019 11:36:28 +0200
+
+postgresql-11 (11.4-1) unstable; urgency=medium
+
+  * New upstream version.
+    + Fix buffer-overflow hazards in SCRAM verifier parsing
+      (Jonathan Katz, Heikki Linnakangas, Michael Paquier)
+
+      Any authenticated user could cause a stack-based buffer overflow by
+      changing their own password to a purpose-crafted value.  In addition to
+      the ability to crash the PostgreSQL server, this could suffice for
+      executing arbitrary code as the PostgreSQL operating system account.
+
+      A similar overflow hazard existed in libpq, which could allow a rogue
+      server to crash a client or perhaps execute arbitrary code as the
+      client's operating system account.
+
+      The PostgreSQL Project thanks Alexander Lakhin for reporting this
+      problem.  (CVE-2019-10164)
+
+ -- Christoph Berg <myon@debian.org>  Tue, 18 Jun 2019 11:03:14 +0200
+
+postgresql-11 (11.3-1) unstable; urgency=medium
+
+  * New upstream version.
+    + Prevent row-level security policies from being bypassed via selectivity
+      estimators (Dean Rasheed)
+
+      Some of the planner's selectivity estimators apply user-defined
+      operators to values found in pg_statistic (e.g., most-common values).
+      A leaky operator therefore can disclose some of the entries in a data
+      column, even if the calling user lacks permission to read that column.
+      In CVE-2017-7484 we added restrictions to forestall that, but we failed
+      to consider the effects of row-level security.  A user who has SQL
+      permission to read a column, but who is forbidden to see certain rows
+      due to RLS policy, might still learn something about those rows'
+      contents via a leaky operator.  This patch further tightens the rules,
+      allowing leaky operators to be applied to statistics data only when
+      there is no relevant RLS policy.  (CVE-2019-10130)
+
+    + Avoid access to already-freed memory during partition routing error
+      reports (Michael Paquier)
+
+      This mistake could lead to a crash, and in principle it might be
+      possible to use it to disclose server memory contents. (CVE-2019-10129)
+
+ -- Christoph Berg <myon@debian.org>  Tue, 07 May 2019 12:04:34 +0200
+
+postgresql-11 (11.2-2) unstable; urgency=medium
+
+  * Allow overriding the startup command suggested by initdb.
+    (See: #872660)
+
+ -- Christoph Berg <myon@debian.org>  Fri, 01 Mar 2019 18:59:15 +0100
+
+postgresql-11 (11.2-1) unstable; urgency=medium
+
+  * New upstream version.
+  * Add Breaks on modules needing recompilation against heap_getattr().
+  * Debconf translations:
+    + ru by Lev Lamberov. (Closes: #920893)
+    + nl by Frans Spiesschaert. (Closes: #921090)
+    + fr by Jean-Pierre Giraud. (Closes: #920499)
+    + pt_BR by Adriano Rafael Gomes. (Closes: #920541)
+  * Update PostgreSQL Maintainers address.
+
+ -- Christoph Berg <christoph.berg@credativ.de>  Wed, 30 Jan 2019 13:23:14 +0100
+
+postgresql-11 (11.1-3) unstable; urgency=medium
+
+  * Debconf translations:
+    + pt by Américo Monteiro. (Closes: #919338)
+    + de by Helge Kreutzmann. (Closes: #919770)
+  * Document src/backend/snowball/libstemmer origin and licensing.
+    (Closes: #626732)
+
+ -- Christoph Berg <christoph.berg@credativ.de>  Mon, 28 Jan 2019 09:54:04 +0100
+
+postgresql-11 (11.1-2) unstable; urgency=medium
+
+  * Drop explicit xz compression for .debs.
+  * Depend on locales | locales-all. Suggested by Elrond, thanks!
+    (Closes: #916655)
+  * Build-Depend on tcl-dev instead of on a specific version.
+  * initdb doesn't like LANG and LC_ALL to contradict, unset LANG and
+    LC_CTYPE at test time. (Closes: #917764)
+  * On purge, ask the user if they want to remove clusters. (Closes: #911940)
+
+ -- Christoph Berg <christoph.berg@credativ.de>  Wed, 09 Jan 2019 16:35:51 +0100
+
+postgresql-11 (11.1-1) unstable; urgency=medium
+
+  * New upstream version.
+    + Ensure proper quoting of transition table names when pg_dump emits
+      CREATE TRIGGER ... REFERENCING commands. (CVE-2018-16850)
+
+ -- Christoph Berg <christoph.berg@credativ.de>  Tue, 06 Nov 2018 14:57:57 +0100
+
+postgresql-11 (11.0-1) unstable; urgency=medium
+
+  * First PostgreSQL 11 stable release.
+  * Bump postgresql-11's postgresql-common dependency to 194 so we have a
+    "supported-versions" script that lists 11 as supported.
+
+ -- Christoph Berg <myon@debian.org>  Wed, 17 Oct 2018 22:43:19 +0200
+
+postgresql-11 (11~rc1-1) unstable; urgency=medium
+
+  * First PostgreSQL 11 release candidate.
+  * configure: Hard-code paths to /bin/mkdir -p and /bin/tar.
+  * Disable JIT on riscv64 (llvm 7 not built yet), and powerpcspe (clang does
+    not load pyconfig.h because it doesn't define __SPE__), see
+    https://buildd.debian.org/status/fetch.php?pkg=postgresql-11&arch=powerpcspe&ver=11%7Ebeta4-2&stamp=1537447357&raw=0
+
+ -- Christoph Berg <christoph.berg@credativ.de>  Wed, 10 Oct 2018 10:40:03 +0200
+
+postgresql-11 (11~beta4-2) experimental; urgency=medium
+
+  * control, postgresql-11.install: Don't use llvm for JIT on x32 (crashes)
+    https://buildd.debian.org/status/fetch.php?pkg=postgresql-11&arch=x32&ver=11~beta3-2&stamp=1537286634&raw=0
+    (See also http://lists.llvm.org/pipermail/llvm-dev/2018-September/126424.html)
+
+ -- Christoph Berg <christoph.berg@credativ.de>  Thu, 20 Sep 2018 09:51:38 +0200
+
+postgresql-11 (11~beta4-1) experimental; urgency=medium
+
+  * Fourth PostgreSQL 11 beta release. JIT support is enabled at compile time,
+    but disabled at runtime by default. "SET jit = on;" to enable.
+  * rules: Remove llvm 7 hard-coding, package can detect version 7 now.
+  * control, postgresql-11.install: Don't use llvm for JIT on alpha (llvm does
+    not support the architecture), powerpc (dies with illegal instruction)
+    https://buildd.debian.org/status/fetch.php?pkg=postgresql-11&arch=powerpc&ver=11%7Ebeta3-2&stamp=1537008595&raw=0
+    sparc64 (Invalid data was encountered while parsing the file)
+    https://buildd.debian.org/status/fetch.php?pkg=postgresql-11&arch=sparc64&ver=11~beta3-2&stamp=1537018656&raw=0
+  * Remove regress-python3-mangle.mk from plpython3 package, it's also in
+    -server-dev.
+  * Install usr/share/locale/*/LC_MESSAGES/pg_verify_checksums-*.mo.
+
+ -- Christoph Berg <christoph.berg@credativ.de>  Tue, 18 Sep 2018 12:51:34 +0200
+
+postgresql-11 (11~beta3-2) experimental; urgency=medium
+
+  * Revert module_srcdir hack, rely on pg_buildext for reproducible PGXS
+    module builds instead.
+  * Enable dtrace support.
+  * psql uses sensible-editor, depend on sensible-utils.
+  * Add lintian overrides for plugins that link no external libraries.
+  * Bump llvm version to 7, architectures !hppa !hurd-i386 !ia64
+    !kfreebsd-amd64 !kfreebsd-i386 !m68k !sh4.
+
+ -- Christoph Berg <myon@debian.org>  Sat, 15 Sep 2018 11:35:06 +0200
+
+postgresql-11 (11~beta3-1) experimental; urgency=medium
+
+  * Third PostgreSQL 11 beta release.
+  * Filter -fdebug-prefix-map and -ffile-prefix-map in more places, and make
+    PGXS modules build reproducibly.
+
+ -- Christoph Berg <christoph.berg@credativ.de>  Tue, 07 Aug 2018 10:31:55 +0200
+
+postgresql-11 (11~beta2-2) experimental; urgency=medium
+
+  * Drop support for tcl8.5.
+  * Use dh_auto_configure to correctly seed the build architecture.
+  * Hard-code llvm version, we need the server-dev package to depend on the
+    version used at compile time.
+
+ -- Christoph Berg <christoph.berg@credativ.de>  Fri, 13 Jul 2018 14:08:10 +0200
+
+postgresql-11 (11~beta2-1) experimental; urgency=medium
+
+  * Second PostgreSQL 11 beta release.
+  * Add new pgtypes header and symbol.
+
+ -- Christoph Berg <myon@debian.org>  Mon, 25 Jun 2018 21:18:58 +0200
+
+postgresql-11 (11~beta1-2) experimental; urgency=medium
+
+  * Disable llvm jit everywhere except on amd64 and i386. Other platforms need
+    r328687 merged into llvm first.
+    http://llvm.org/viewvc/llvm-project?view=revision&revision=328687
+  * Remove version checking for libselinux1-dev, 2.1.10 is old enough now.
+
+ -- Christoph Berg <christoph.berg@credativ.de>  Wed, 23 May 2018 13:09:47 +0200
+
+postgresql-11 (11~beta1-1) experimental; urgency=medium
+
+  * First PostgreSQL 11 beta release.
+
+ -- Christoph Berg <myon@debian.org>  Tue, 22 May 2018 14:19:08 +0200
+
+postgresql-11 (11~~devel-1) UNRELEASED; urgency=medium
+
+  * New major upstream version 11; packaging based on postgresql-10.
+
+ -- Christoph Berg <myon@debian.org>  Fri, 11 Aug 2017 20:37:42 +0200
